@@ -19,10 +19,10 @@ const SplashScreen: FC = () => {
   const { user, setUser } = useAuthStore();
 
   const tokenCheck = async () => {
-    // const accesstoken = tokenStorage.getString("accessToken") as string;
-    // const refreshToken = tokenStorage.getString("refreshToken") as string;
-    // if (accesstoken) {
-    // }
+    const accesstoken = tokenStorage.getString("accessToken") as string;
+    const refreshToken = tokenStorage.getString("refreshToken") as string;
+    if (accesstoken) {
+    }
     resetAndNavigate("CustomerLogin");
     // Alert.alert(
     //   "Navigate to CustomerLogin"
