@@ -7,6 +7,8 @@ import Geolocation from "@react-native-community/geolocation";
 import { useAuthStore } from "@state/authStore";
 import { tokenStorage } from "@state/storage";
 import { resetAndNavigate } from "@utils/NavigationUtils";
+import { refetchUser, refresh_tokens } from "@service/authService";
+import { jwtDecode } from "jwt-decode";
 
 Geolocation.setRNConfiguration({
   skipPermissionRequests: false,
@@ -15,18 +17,47 @@ Geolocation.setRNConfiguration({
   locationProvider: "auto",
 });
 
+interface DecodedToken {
+  exp: number;
+}
+
 const SplashScreen: FC = () => {
   const { user, setUser } = useAuthStore();
 
   const tokenCheck = async () => {
-    const accesstoken = tokenStorage.getString("accessToken") as string;
+    const accessToken = tokenStorage.getString("accessToken") as string;
     const refreshToken = tokenStorage.getString("refreshToken") as string;
-    if (accesstoken) {
+    if (accessToken) {
+      const decodedAccessToken = jwtDecode<DecodedToken>(accessToken);
+      const decodedRefreshToken = jwtDecode<DecodedToken>(refreshToken);
+      const currentTime = Date.now() / 1000;
+
+      if (decodedRefreshToken?.exp < currentTime) {
+        resetAndNavigate("CustomerLogin");
+        Alert.alert("Session Expired", "Please login again");
+        return false;
+      }
+
+      if (decodedAccessToken?.exp < currentTime) {
+        try {
+          await refresh_tokens();
+          await refetchUser(setUser);
+        } catch (error) {
+          console.log(error);
+          Alert.alert("There was an error refreshing token!");
+          return false;
+        }
+      }
+
+      if (user?.role === "Customer") {
+        resetAndNavigate("ProductDashboard");
+      } else {
+        resetAndNavigate("DeliveryDashboard");
+      }
+
+      return true;
     }
     resetAndNavigate("CustomerLogin");
-    // Alert.alert(
-    //   "Navigate to CustomerLogin"
-    // );
     return false;
   };
 
@@ -34,7 +65,7 @@ const SplashScreen: FC = () => {
     const fetchUserLocation = async () => {
       try {
         Geolocation.requestAuthorization();
-        tokenCheck()
+        tokenCheck();
       } catch (error) {
         Alert.alert(
           "Sorry we need location service to give you the best experience."
